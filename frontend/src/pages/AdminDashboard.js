@@ -150,6 +150,50 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <div className="text-center mb-6">
+              <Lock className="h-12 w-12 mx-auto text-purple-600 mb-4" />
+              <h2 className="text-2xl font-bold">Admin Panel Şifresi</h2>
+              <p className="text-gray-600 mt-2">Devam etmek için şifre girin</p>
+            </div>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && checkPassword()}
+              placeholder="Şifre"
+              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent mb-4"
+              autoFocus
+              data-testid="admin-password-input"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={checkPassword}
+                className="flex-1 bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-all"
+                data-testid="admin-password-submit"
+              >
+                Onayla
+              </button>
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPassword('');
+                }}
+                className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-400 transition-all"
+              >
+                İptal
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 text-center mt-4">
+              Demo şifre: 1234
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-blue-600 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-4">
