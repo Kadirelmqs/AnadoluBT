@@ -1,18 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Package, Clock, CheckCircle, XCircle, Bike } from 'lucide-react';
-import { getOrders, updateOrderStatus, assignCourierToOrder, getCouriers, downloadReceipt } from '../services/api';
+import { Package, Clock } from 'lucide-react';
+import { getOrders, updateOrderStatus, downloadReceipt } from '../services/api';
 import { toast } from 'sonner';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [statusFilter, setStatusFilter] = useState(null);
-  const [couriers, setCouriers] = useState([]);
-  const [selectedOrderForCourier, setSelectedOrderForCourier] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadOrders();
-    loadCouriers();
   }, [statusFilter]);
 
   const loadOrders = async () => {
@@ -22,15 +19,6 @@ export default function OrdersPage() {
     } catch (error) {
       console.error('Siparişler yüklenemedi:', error);
       toast.error('Siparişler yüklenemedi');
-    }
-  };
-
-  const loadCouriers = async () => {
-    try {
-      const couriersData = await getCouriers(true);
-      setCouriers(couriersData);
-    } catch (error) {
-      console.error('Kuryeler yüklenemedi:', error);
     }
   };
 
@@ -45,19 +33,6 @@ export default function OrdersPage() {
       toast.error('Durum güncellenemedi');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleAssignCourier = async (orderId, courierId) => {
-    try {
-      await assignCourierToOrder(orderId, courierId);
-      toast.success('Kurye atandı');
-      setSelectedOrderForCourier(null);
-      loadOrders();
-      loadCouriers();
-    } catch (error) {
-      console.error('Kurye atama hatası:', error);
-      toast.error(error.response?.data?.detail || 'Kurye atanamadı');
     }
   };
 
@@ -184,12 +159,20 @@ export default function OrdersPage() {
                 <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
                   <div>
                     <span className="text-gray-600">Tip:</span>
-                    <span className="ml-2 font-medium">{order.order_type === 'dine-in' ? 'İçeride' : order.order_type === 'takeaway' ? 'Paket' : 'Gel-Al'}</span>
+                    <span className="ml-2 font-medium">
+                      {order.order_type === 'dine-in' ? 'İçeride' : order.order_type === 'takeaway' ? 'Paket' : 'Gel-Al'}
+                    </span>
                   </div>
                   {order.table_name && (
                     <div>
                       <span className="text-gray-600">Masa:</span>
                       <span className="ml-2 font-medium">{order.table_name}</span>
+                    </div>
+                  )}
+                  {order.customer_name && (
+                    <div>
+                      <span className="text-gray-600">Müşteri:</span>
+                      <span className="ml-2 font-medium">{order.customer_name}</span>
                     </div>
                   )}
                   {order.courier_name && (
@@ -239,16 +222,6 @@ export default function OrdersPage() {
                       Hazır Olarak İşaretle
                     </button>
                   )}
-                  {order.status === 'ready' && (
-                    <button
-                      onClick={() => handleStatusChange(order.id, 'delivered')}
-                      disabled={loading}
-                      className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-all disabled:opacity-50"
-                      data-testid={`mark-delivered-${order.order_number}`}
-                    >
-                      Teslim Edildi
-                    </button>
-                  )}
                   {['pending', 'preparing'].includes(order.status) && (
                     <button
                       onClick={() => handleStatusChange(order.id, 'cancelled')}
@@ -259,16 +232,6 @@ export default function OrdersPage() {
                       İptal Et
                     </button>
                   )}
-                  {order.order_type === 'delivery' && !order.courier_id && order.status !== 'delivered' && order.status !== 'cancelled' && (
-                    <button
-                      onClick={() => setSelectedOrderForCourier(order.id)}
-                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all flex items-center"
-                      data-testid={`assign-courier-${order.order_number}`}
-                    >
-                      <Bike className="h-4 w-4 mr-2" />
-                      Kurye Ata
-                    </button>
-                  )}
                   <button
                     onClick={() => handleDownloadReceipt(order.id)}
                     className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all"
@@ -277,32 +240,6 @@ export default function OrdersPage() {
                     Fiş İndir
                   </button>
                 </div>
-
-                {/* Kurye Seçim Modal */}
-                {selectedOrderForCourier === order.id && (
-                  <div className="mt-4 bg-white border-2 border-purple-600 rounded-lg p-4">
-                    <h4 className="font-semibold mb-3">Kurye Seçin:</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      {couriers.map((courier) => (
-                        <button
-                          key={courier.id}
-                          onClick={() => handleAssignCourier(order.id, courier.id)}
-                          className="px-3 py-2 bg-purple-100 text-purple-800 rounded-lg hover:bg-purple-200 transition-all text-left"
-                          data-testid={`select-courier-${courier.first_name.toLowerCase()}`}
-                        >
-                          <div className="font-medium">{courier.first_name} {courier.last_name}</div>
-                          <div className="text-xs">{courier.vehicle_type}</div>
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => setSelectedOrderForCourier(null)}
-                      className="mt-2 text-sm text-gray-600 hover:text-gray-800"
-                    >
-                      İptal
-                    </button>
-                  </div>
-                )}
               </div>
             ))
           )}
