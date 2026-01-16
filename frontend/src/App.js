@@ -55,8 +55,10 @@ function AdminNav() {
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center py-3">
           <div className="flex items-center space-x-2">
-            <ShoppingCart className="h-8 w-8 text-white" />
-            <span className="text-white font-bold text-xl">Döner Restoranı POS</span>
+            <div className="bg-white rounded-full p-2">
+              <span className="text-orange-600 font-bold text-lg">AB</span>
+            </div>
+            <span className="text-white font-bold text-xl">Anadolu BT POS</span>
           </div>
           
           <div className="flex space-x-1">
