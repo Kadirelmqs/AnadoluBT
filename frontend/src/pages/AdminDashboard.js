@@ -505,6 +505,11 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+        
+        {/* Footer */}
+        <div className="mt-8 text-center">
+          <p className="text-xs text-gray-500">Powered by <span className="font-semibold text-purple-600">Anadolu BT</span></p>
+        </div>
       </div>
     </div>
   );
