@@ -1,18 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Bike, Plus, Phone, Truck } from 'lucide-react';
-import { getCouriers, createCourier, updateCourierAvailability } from '../services/api';
+import { Bike, Phone, Truck } from 'lucide-react';
+import { getCouriers } from '../services/api';
 import { toast } from 'sonner';
 
 export default function CouriersPage() {
   const [couriers, setCouriers] = useState([]);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
-    phone_number: '',
-    vehicle_type: 'Bisiklet',
-    vehicle_plate: '',
-  });
 
   useEffect(() => {
     loadCouriers();
@@ -20,42 +12,11 @@ export default function CouriersPage() {
 
   const loadCouriers = async () => {
     try {
-      const couriersData = await getCouriers();
+      const couriersData = await getCouriers(false, true);
       setCouriers(couriersData);
     } catch (error) {
       console.error('Kuryeler yüklenemedi:', error);
       toast.error('Kuryeler yüklenemedi');
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await createCourier(formData);
-      toast.success('Kurye eklendi');
-      setShowAddForm(false);
-      setFormData({
-        first_name: '',
-        last_name: '',
-        phone_number: '',
-        vehicle_type: 'Bisiklet',
-        vehicle_plate: '',
-      });
-      loadCouriers();
-    } catch (error) {
-      console.error('Kurye ekleme hatası:', error);
-      toast.error('Kurye eklenemedi');
-    }
-  };
-
-  const handleToggleAvailability = async (courierId, currentStatus) => {
-    try {
-      await updateCourierAvailability(courierId, !currentStatus);
-      toast.success('Kurye durumu güncellendi');
-      loadCouriers();
-    } catch (error) {
-      console.error('Durum güncelleme hatası:', error);
-      toast.error('Durum güncellenemedi');
     }
   };
 
@@ -70,96 +31,8 @@ export default function CouriersPage() {
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Kuryeler</h2>
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg hover:from-orange-700 hover:to-red-700 transition-all flex items-center"
-            data-testid="add-courier-btn"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Kurye Ekle
-          </button>
+          <p className="text-gray-600">Toplam {couriers.length} kurye</p>
         </div>
-
-        {/* Kurye Ekleme Formu */}
-        {showAddForm && (
-          <div className="bg-gray-50 rounded-lg p-6 mb-6">
-            <h3 className="font-semibold mb-4">Yeni Kurye Ekle</h3>
-            <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Ad</label>
-                <input
-                  type="text"
-                  value={formData.first_name}
-                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  required
-                  data-testid="courier-first-name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Soyad</label>
-                <input
-                  type="text"
-                  value={formData.last_name}
-                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  required
-                  data-testid="courier-last-name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Telefon</label>
-                <input
-                  type="tel"
-                  value={formData.phone_number}
-                  onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  required
-                  data-testid="courier-phone"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Araç Tipi</label>
-                <select
-                  value={formData.vehicle_type}
-                  onChange={(e) => setFormData({ ...formData, vehicle_type: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  data-testid="courier-vehicle-type"
-                >
-                  <option>Bisiklet</option>
-                  <option>Motosiklet</option>
-                  <option>Araba</option>
-                </select>
-              </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium mb-2">Plaka (Opsiyonel)</label>
-                <input
-                  type="text"
-                  value={formData.vehicle_plate}
-                  onChange={(e) => setFormData({ ...formData, vehicle_plate: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  data-testid="courier-plate"
-                />
-              </div>
-              <div className="col-span-2 flex gap-2">
-                <button
-                  type="submit"
-                  className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-all"
-                  data-testid="submit-courier"
-                >
-                  Kaydet
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAddForm(false)}
-                  className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-all"
-                >
-                  İptal
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
 
         {/* Kurye Listesi */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -197,7 +70,7 @@ export default function CouriersPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2 text-sm mb-4">
+                <div className="space-y-2 text-sm">
                   <div className="flex items-center text-gray-700">
                     <Phone className="h-4 w-4 mr-2" />
                     {courier.phone_number}
@@ -208,21 +81,15 @@ export default function CouriersPage() {
                     {courier.vehicle_plate && ` - ${courier.vehicle_plate}`}
                   </div>
                 </div>
-
-                <button
-                  onClick={() => handleToggleAvailability(courier.id, courier.is_available)}
-                  className={`w-full py-2 rounded-lg font-medium transition-all ${
-                    courier.is_available
-                      ? 'bg-red-600 text-white hover:bg-red-700'
-                      : 'bg-green-600 text-white hover:bg-green-700'
-                  }`}
-                  data-testid={`toggle-availability-${courier.first_name.toLowerCase()}`}
-                >
-                  {courier.is_available ? 'Meşgul Yap' : 'Müsait Yap'}
-                </button>
               </div>
             ))
           )}
+        </div>
+
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-sm text-blue-800">
+            <strong>Not:</strong> Kurye onaylama ve silme işlemleri için <strong>Admin Panel</strong> sayfasını kullanın.
+          </p>
         </div>
       </div>
     </div>
