@@ -118,6 +118,27 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDailyExport = async () => {
+    if (!window.confirm('Gün sonu raporunu indirip bugünün siparişlerini silmek istediğinizden emin misiniz?')) return;
+    
+    try {
+      const blob = await exportDailyAndClear();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const today = new Date().toISOString().split('T')[0];
+      link.download = `gun-sonu-${today}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success('Gün sonu raporu indirildi ve siparişler temizlendi!');
+      loadData(); // Reload stats
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'İndirme başarısız');
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
