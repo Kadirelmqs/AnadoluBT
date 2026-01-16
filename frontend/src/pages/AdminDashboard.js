@@ -227,9 +227,9 @@ export default function AdminDashboard() {
         {/* Tabs */}
         <div className="flex flex-wrap gap-2 mb-6">
           <button
-            onClick={() => setActiveTab('pending')}
+            onClick={() => handleTabClick('pending')}
             className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-              activeTab === 'pending'
+              activeTab === 'pending' && isUnlocked
                 ? 'bg-purple-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
@@ -239,9 +239,9 @@ export default function AdminDashboard() {
             Onay Bekleyenler ({pendingCouriers.length})
           </button>
           <button
-            onClick={() => setActiveTab('approved')}
+            onClick={() => handleTabClick('approved')}
             className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-              activeTab === 'approved'
+              activeTab === 'approved' && isUnlocked
                 ? 'bg-purple-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
@@ -251,9 +251,9 @@ export default function AdminDashboard() {
             Kuryeler ({approvedCouriers.length})
           </button>
           <button
-            onClick={() => setActiveTab('stats')}
+            onClick={() => handleTabClick('stats')}
             className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-              activeTab === 'stats'
+              activeTab === 'stats' && isUnlocked
                 ? 'bg-purple-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
