@@ -70,6 +70,18 @@ export const exportOrders = async (month = null) => {
   return response.data;
 };
 
+export const exportDailyAndClear = async () => {
+  const response = await api.get('/admin/export/daily', {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+export const getCourierStats = async () => {
+  const response = await api.get('/admin/courier-stats');
+  return response.data;
+};
+
 // ========== COURIER ==========
 export const getPackages = async () => {
   const response = await api.get('/courier/packages');
@@ -78,6 +90,11 @@ export const getPackages = async () => {
 
 export const getMyOrders = async () => {
   const response = await api.get('/courier/my-orders');
+  return response.data;
+};
+
+export const getMyStats = async () => {
+  const response = await api.get('/courier/my-stats');
   return response.data;
 };
 
