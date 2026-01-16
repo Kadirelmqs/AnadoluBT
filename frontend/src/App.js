@@ -91,11 +91,18 @@ function AdminNav() {
 // Admin Routes Layout
 function AdminLayout({ children }) {
   return (
-    <div className="App min-h-screen bg-gray-50">
+    <div className="App min-h-screen bg-gray-50 flex flex-col">
       <AdminNav />
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-4 py-6 flex-1">
         {children}
       </div>
+      <footer className="bg-white border-t py-3">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <p className="text-xs text-gray-500">
+            Powered by <span className="font-semibold text-orange-600">Anadolu BT</span>
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
