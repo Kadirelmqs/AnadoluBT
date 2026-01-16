@@ -3,11 +3,12 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { 
   Users, CheckCircle, XCircle, Download, TrendingUp, 
-  DollarSign, Package, LogOut, Calendar 
+  DollarSign, Package, LogOut, Calendar, Lock, Bike
 } from 'lucide-react';
 import {
   getPendingCouriers, approveCourier, deleteCourier,
-  getCouriers, getMonthlyStats, getYearlyStats, exportOrders
+  getCouriers, getMonthlyStats, getYearlyStats, exportOrders,
+  exportDailyAndClear, getCourierStats
 } from '../services/api';
 import { toast } from 'sonner';
 
@@ -18,8 +19,12 @@ export default function AdminDashboard() {
   const [approvedCouriers, setApprovedCouriers] = useState([]);
   const [monthlyStats, setMonthlyStats] = useState(null);
   const [yearlyStats, setYearlyStats] = useState(null);
+  const [courierStats, setCourierStats] = useState([]);
   const [activeTab, setActiveTab] = useState('pending');
   const [loading, setLoading] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [password, setPassword] = useState('');
+  const [isUnlocked, setIsUnlocked] = useState(false);
 
   useEffect(() => {
     loadData();
