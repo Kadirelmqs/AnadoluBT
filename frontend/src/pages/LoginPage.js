@@ -236,6 +236,11 @@ export default function LoginPage() {
           <p className="text-xs text-blue-800 font-semibold mb-1">Demo Giriş:</p>
           <p className="text-xs text-blue-600">Kullanıcı: admin | Şifre: admin123</p>
         </div>
+
+        {/* Footer */}
+        <div className="mt-6 text-center">
+          <p className="text-xs text-gray-500">Powered by <span className="font-semibold text-orange-600">Anadolu BT</span></p>
+        </div>
       </div>
     </div>
   );
