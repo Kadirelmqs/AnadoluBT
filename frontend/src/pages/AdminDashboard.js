@@ -350,8 +350,53 @@ export default function AdminDashboard() {
         )}
 
         {/* İstatistikler */}
-        {activeTab === 'stats' && (
+        {activeTab === 'stats' && isUnlocked && (
           <div className="space-y-6">
+            {/* Gün Sonu Raporu Butonu */}
+            <div className="bg-gradient-to-r from-red-600 to-orange-600 rounded-lg shadow-lg p-6 text-white">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-bold mb-2">Gün Sonu Raporu</h3>
+                  <p className="text-sm opacity-90">Bugünün raporunu indir ve siparişleri temizle</p>
+                </div>
+                <button
+                  onClick={handleDailyExport}
+                  className="bg-white text-red-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-all flex items-center"
+                  data-testid="export-daily"
+                >
+                  <Download className="h-5 w-5 mr-2" />
+                  Gün Sonu Raporu
+                </button>
+              </div>
+            </div>
+
+            {/* Kurye İstatistikleri */}
+            {courierStats.length > 0 && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="text-lg font-bold mb-4 flex items-center">
+                  <Bike className="h-6 w-6 mr-2 text-purple-600" />
+                  Bugünkü Kurye Performansı
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {courierStats.map((stat) => (
+                    <div key={stat.courier_id} className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-4 border-2 border-purple-200">
+                      <h4 className="font-bold text-lg mb-2">{stat.courier_name}</h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Teslimat:</span>
+                          <span className="font-bold text-purple-600">{stat.deliveries} adet</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Gelir:</span>
+                          <span className="font-bold text-green-600">{stat.total_revenue.toFixed(2)} ₺</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Aylık & Yıllık İstatistikler */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Aylık */}
