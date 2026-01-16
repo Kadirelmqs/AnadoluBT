@@ -11,6 +11,91 @@ const api = axios.create({
   },
 });
 
+// Token interceptor
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// ========== AUTH ==========
+export const register = async (data) => {
+  const response = await api.post('/auth/register', data);
+  return response.data;
+};
+
+export const login = async (data) => {
+  const response = await api.post('/auth/login', data);
+  return response.data;
+};
+
+export const getMe = async () => {
+  const response = await api.get('/auth/me');
+  return response.data;
+};
+
+// ========== ADMIN ==========
+export const getPendingCouriers = async () => {
+  const response = await api.get('/admin/couriers/pending');
+  return response.data;
+};
+
+export const approveCourier = async (courierId) => {
+  const response = await api.put(`/admin/couriers/${courierId}/approve`);
+  return response.data;
+};
+
+export const deleteCourier = async (courierId) => {
+  const response = await api.delete(`/admin/couriers/${courierId}`);
+  return response.data;
+};
+
+export const getMonthlyStats = async () => {
+  const response = await api.get('/admin/stats/monthly');
+  return response.data;
+};
+
+export const getYearlyStats = async () => {
+  const response = await api.get('/admin/stats/yearly');
+  return response.data;
+};
+
+export const exportOrders = async (month = null) => {
+  const response = await api.get('/admin/export/orders', {
+    params: { format: 'excel', month },
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+// ========== COURIER ==========
+export const getPackages = async () => {
+  const response = await api.get('/courier/packages');
+  return response.data;
+};
+
+export const getMyOrders = async () => {
+  const response = await api.get('/courier/my-orders');
+  return response.data;
+};
+
+export const takeOrder = async (orderId) => {
+  const response = await api.put(`/courier/orders/${orderId}/take`);
+  return response.data;
+};
+
+export const deliverOrder = async (orderId) => {
+  const response = await api.put(`/courier/orders/${orderId}/deliver`);
+  return response.data;
+};
+
+export const cancelOrderCourier = async (orderId) => {
+  const response = await api.put(`/courier/orders/${orderId}/cancel`);
+  return response.data;
+};
+
 // ========== CATEGORIES ==========
 export const getCategories = async (activeOnly = true) => {
   const response = await api.get('/categories', { params: { active_only: activeOnly } });
@@ -35,13 +120,6 @@ export const createProduct = async (data) => {
   return response.data;
 };
 
-export const updateProductAvailability = async (productId, isAvailable) => {
-  const response = await api.put(`/products/${productId}/availability`, null, {
-    params: { is_available: isAvailable },
-  });
-  return response.data;
-};
-
 // ========== TABLES ==========
 export const getTables = async () => {
   const response = await api.get('/tables');
@@ -53,38 +131,10 @@ export const createTable = async (data) => {
   return response.data;
 };
 
-export const updateTableStatus = async (tableId, isOccupied) => {
-  const response = await api.put(`/tables/${tableId}/status`, null, {
-    params: { is_occupied: isOccupied },
-  });
-  return response.data;
-};
-
-// ========== CUSTOMERS ==========
-export const getCustomers = async () => {
-  const response = await api.get('/customers');
-  return response.data;
-};
-
-export const createCustomer = async (data) => {
-  const response = await api.post('/customers', data);
-  return response.data;
-};
-
 // ========== COURIERS ==========
-export const getCouriers = async (availableOnly = false) => {
-  const response = await api.get('/couriers', { params: { available_only: availableOnly } });
-  return response.data;
-};
-
-export const createCourier = async (data) => {
-  const response = await api.post('/couriers', data);
-  return response.data;
-};
-
-export const updateCourierAvailability = async (courierId, isAvailable) => {
-  const response = await api.put(`/couriers/${courierId}/availability`, null, {
-    params: { is_available: isAvailable },
+export const getCouriers = async (availableOnly = false, approvedOnly = true) => {
+  const response = await api.get('/couriers', { 
+    params: { available_only: availableOnly, approved_only: approvedOnly } 
   });
   return response.data;
 };
@@ -109,11 +159,6 @@ export const updateOrderStatus = async (orderId, status) => {
   const response = await api.put(`/orders/${orderId}/status`, null, {
     params: { status },
   });
-  return response.data;
-};
-
-export const assignCourierToOrder = async (orderId, courierId) => {
-  const response = await api.put(`/orders/${orderId}/assign-courier`, { courier_id: courierId });
   return response.data;
 };
 
