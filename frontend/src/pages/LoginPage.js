@@ -66,9 +66,9 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-block bg-gradient-to-r from-orange-600 to-red-600 rounded-full p-4 mb-4">
-            <ShoppingCart className="h-12 w-12 text-white" />
+            <div className="text-white font-bold text-2xl">AB</div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-800">Döner Restoranı</h1>
+          <h1 className="text-3xl font-bold text-gray-800">Anadolu BT</h1>
           <p className="text-gray-600 mt-2">POS Sistemi</p>
         </div>
 
