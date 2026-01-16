@@ -103,12 +103,22 @@ export default function POSScreen() {
       return;
     }
 
+    if (orderType === 'takeaway') {
+      if (!customerForm.name || !customerForm.phone || !customerForm.address) {
+        toast.error('Lütfen müşteri bilgilerini doldurun!');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const orderData = {
         items: cart,
         order_type: orderType,
         table_id: orderType === 'dine-in' ? selectedTable : null,
+        customer_name: orderType === 'takeaway' ? customerForm.name : null,
+        customer_phone: orderType === 'takeaway' ? customerForm.phone : null,
+        customer_address: orderType === 'takeaway' ? customerForm.address : null,
       };
 
       const order = await createOrder(orderData);
@@ -118,6 +128,7 @@ export default function POSScreen() {
       // Sepeti temizle
       setCart([]);
       setSelectedTable(null);
+      setCustomerForm({ name: '', phone: '', address: '' });
       
       // Masaları yenile
       const tablesData = await getTables();
