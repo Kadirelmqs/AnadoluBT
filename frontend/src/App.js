@@ -1,16 +1,44 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import '@/App.css';
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Home, ShoppingCart, Package, Users, Bike, Settings, BarChart3 } from 'lucide-react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+
+// Pages
+import LoginPage from './pages/LoginPage';
 import POSScreen from './pages/POSScreen';
 import OrdersPage from './pages/OrdersPage';
 import CouriersPage from './pages/CouriersPage';
 import ManagementPage from './pages/ManagementPage';
 import DashboardPage from './pages/DashboardPage';
+import CourierDashboard from './pages/CourierDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+// Protected Route Component
+function ProtectedRoute({ children, allowedRoles }) {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-xl text-gray-500">Yükleniyor...</div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+}
 
-function Navigation() {
+// Navigation for Admin
+function AdminNav() {
   const location = useLocation();
   
   const navItems = [
@@ -19,6 +47,7 @@ function Navigation() {
     { path: '/couriers', icon: Bike, label: 'Kuryeler' },
     { path: '/dashboard', icon: BarChart3, label: 'İstatistikler' },
     { path: '/management', icon: Settings, label: 'Yönetim' },
+    { path: '/admin', icon: Users, label: 'Admin Panel' },
   ];
   
   return (
@@ -57,22 +86,119 @@ function Navigation() {
   );
 }
 
-function App() {
+// Admin Routes Layout
+function AdminLayout({ children }) {
   return (
     <div className="App min-h-screen bg-gray-50">
-      <BrowserRouter>
-        <Navigation />
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <Routes>
-            <Route path="/" element={<POSScreen />} />
-            <Route path="/orders" element={<OrdersPage />} />
-            <Route path="/couriers" element={<CouriersPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/management" element={<ManagementPage />} />
-          </Routes>
-        </div>
-      </BrowserRouter>
+      <AdminNav />
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {children}
+      </div>
     </div>
+  );
+}
+
+function AppRoutes() {
+  const { user } = useAuth();
+
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      
+      {/* Courier Routes */}
+      <Route
+        path="/courier"
+        element={
+          <ProtectedRoute allowedRoles={['courier']}>
+            <CourierDashboard />
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* Admin Routes */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* POS Routes (Admin only) */}
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminLayout>
+              <POSScreen />
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/orders"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminLayout>
+              <OrdersPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/couriers"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminLayout>
+              <CouriersPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminLayout>
+              <DashboardPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/management"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminLayout>
+              <ManagementPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* Default Redirect */}
+      <Route
+        path="*"
+        element={
+          user ? (
+            user.role === 'admin' ? <Navigate to="/" replace /> : <Navigate to="/courier" replace />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
