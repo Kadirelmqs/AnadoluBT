@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Response, Depends
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -11,6 +11,11 @@ from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
 from pdf_service import PDFReceiptService
+from auth import (
+    hash_password, verify_password, create_access_token,
+    get_current_user, require_admin, require_courier
+)
+from excel_service import ExcelExportService
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -20,8 +25,9 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# PDF Servisi
+# Services
 pdf_service = PDFReceiptService()
+excel_service = ExcelExportService()
 
 # Create the main app
 app = FastAPI(title="Döner Restoranı POS API")
@@ -31,6 +37,28 @@ api_router = APIRouter(prefix="/api")
 
 
 # ==================== MODELS ====================
+
+class User(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    username: str
+    role: str  # "admin" or "courier"
+    is_approved: bool = False
+    courier_id: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class UserRegister(BaseModel):
+    username: str
+    password: str
+    # Kurye bilgileri
+    first_name: str
+    last_name: str
+    phone_number: str
+    vehicle_type: str
+    vehicle_plate: Optional[str] = None
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
 
 class Category(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -71,27 +99,17 @@ class TableCreate(BaseModel):
     table_number: str
     capacity: int
 
-class Customer(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    name: str
-    phone: Optional[str] = None
-    address: Optional[str] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-class CustomerCreate(BaseModel):
-    name: str
-    phone: Optional[str] = None
-    address: Optional[str] = None
-
 class Courier(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     first_name: str
     last_name: str
     phone_number: str
-    vehicle_type: str  # "Bisiklet", "Motosiklet", "Araba"
+    vehicle_type: str
     vehicle_plate: Optional[str] = None
     is_available: bool = True
     current_location: Optional[str] = None
+    user_id: Optional[str] = None
+    is_approved: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class CourierCreate(BaseModel):
@@ -112,12 +130,13 @@ class Order(BaseModel):
     order_number: str
     items: List[OrderItem]
     total_amount: float
-    status: str = "pending"  # pending, preparing, ready, delivered, cancelled
-    order_type: str = "dine-in"  # dine-in, takeaway, delivery
+    status: str = "pending"
+    order_type: str = "dine-in"
     table_id: Optional[str] = None
     table_name: Optional[str] = None
-    customer_id: Optional[str] = None
     customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
+    customer_address: Optional[str] = None
     courier_id: Optional[str] = None
     courier_name: Optional[str] = None
     notes: Optional[str] = None
@@ -128,8 +147,9 @@ class OrderCreate(BaseModel):
     items: List[OrderItem]
     order_type: str = "dine-in"
     table_id: Optional[str] = None
-    customer_id: Optional[str] = None
-    courier_id: Optional[str] = None
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
+    customer_address: Optional[str] = None
     notes: Optional[str] = None
 
 class AssignCourier(BaseModel):
@@ -139,23 +159,336 @@ class AssignCourier(BaseModel):
 # ==================== HELPER FUNCTIONS ====================
 
 async def get_next_order_number() -> str:
-    """Yeni sipariş numarası oluştur"""
     today = datetime.now(timezone.utc).strftime('%Y%m%d')
     count = await db.orders.count_documents({'order_number': {'$regex': f'^SIP-{today}'}})
     return f"SIP-{today}-{count + 1:04d}"
 
 
-# ==================== ROUTES ====================
+# ==================== AUTH ROUTES ====================
+
+@api_router.post("/auth/register")
+async def register(input: UserRegister):
+    """Kurye kaydı oluştur"""
+    existing = await db.users.find_one({"username": input.username})
+    if existing:
+        raise HTTPException(status_code=400, detail="Bu kullanıcı adı zaten kullanılıyor")
+    
+    # Kurye kaydı oluştur
+    courier = Courier(
+        first_name=input.first_name,
+        last_name=input.last_name,
+        phone_number=input.phone_number,
+        vehicle_type=input.vehicle_type,
+        vehicle_plate=input.vehicle_plate,
+        is_available=True,
+        is_approved=False
+    )
+    courier_doc = courier.model_dump()
+    courier_doc['created_at'] = courier_doc['created_at'].isoformat()
+    await db.couriers.insert_one(courier_doc)
+    
+    # User kaydı oluştur
+    user = User(
+        username=input.username,
+        role="courier",
+        is_approved=False,
+        courier_id=courier.id
+    )
+    user_doc = user.model_dump()
+    user_doc['password'] = hash_password(input.password)
+    user_doc['created_at'] = user_doc['created_at'].isoformat()
+    await db.users.insert_one(user_doc)
+    
+    return {"message": "Kayıt başarılı. Yönetici onayı bekleniyor."}
+
+@api_router.post("/auth/login")
+async def login(input: UserLogin):
+    """Giriş yap"""
+    user = await db.users.find_one({"username": input.username})
+    if not user or not verify_password(input.password, user['password']):
+        raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre hatalı")
+    
+    if user['role'] == 'courier' and not user.get('is_approved', False):
+        raise HTTPException(status_code=403, detail="Hesabınız henüz onaylanmadı")
+    
+    token = create_access_token({
+        "user_id": user['id'],
+        "username": user['username'],
+        "role": user['role'],
+        "is_approved": user.get('is_approved', False),
+        "courier_id": user.get('courier_id')
+    })
+    
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": user['id'],
+            "username": user['username'],
+            "role": user['role'],
+            "is_approved": user.get('is_approved', False),
+            "courier_id": user.get('courier_id')
+        }
+    }
+
+@api_router.get("/auth/me")
+async def get_me(user: dict = Depends(get_current_user)):
+    """Mevcut kullanıcı bilgisi"""
+    return user
+
+
+# ==================== ADMIN ROUTES ====================
+
+@api_router.get("/admin/couriers/pending")
+async def get_pending_couriers(user: dict = Depends(require_admin)):
+    """Onay bekleyen kuryeler"""
+    couriers = await db.couriers.find({"is_approved": False}, {"_id": 0}).to_list(100)
+    for courier in couriers:
+        if isinstance(courier['created_at'], str):
+            courier['created_at'] = datetime.fromisoformat(courier['created_at'])
+    return couriers
+
+@api_router.put("/admin/couriers/{courier_id}/approve")
+async def approve_courier(courier_id: str, user: dict = Depends(require_admin)):
+    """Kuryeyi onayla"""
+    # Courier'i onayla
+    result = await db.couriers.update_one(
+        {"id": courier_id},
+        {"$set": {"is_approved": True}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Kurye bulunamadı")
+    
+    # User'ı da onayla
+    await db.users.update_one(
+        {"courier_id": courier_id},
+        {"$set": {"is_approved": True}}
+    )
+    
+    return {"message": "Kurye onaylandı"}
+
+@api_router.delete("/admin/couriers/{courier_id}")
+async def delete_courier(courier_id: str, user: dict = Depends(require_admin)):
+    """Kuryeyi sil"""
+    # User'ı sil
+    await db.users.delete_one({"courier_id": courier_id})
+    
+    # Courier'i sil
+    result = await db.couriers.delete_one({"id": courier_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Kurye bulunamadı")
+    
+    return {"message": "Kurye silindi"}
+
+@api_router.get("/admin/stats/monthly")
+async def get_monthly_stats(user: dict = Depends(require_admin)):
+    """Aylık istatistikler"""
+    now = datetime.now(timezone.utc)
+    current_month = now.strftime('%Y%m')
+    
+    orders = await db.orders.find(
+        {'order_number': {'$regex': f'^SIP-{current_month}'}, 'status': {'$ne': 'cancelled'}},
+        {"_id": 0, "total_amount": 1, "status": 1}
+    ).to_list(10000)
+    
+    total_revenue = sum(order.get('total_amount', 0) for order in orders)
+    total_orders = len(orders)
+    
+    return {
+        "month": now.strftime('%Y-%m'),
+        "total_orders": total_orders,
+        "total_revenue": total_revenue,
+        "average_order": total_revenue / total_orders if total_orders > 0 else 0
+    }
+
+@api_router.get("/admin/stats/yearly")
+async def get_yearly_stats(user: dict = Depends(require_admin)):
+    """Yıllık istatistikler"""
+    now = datetime.now(timezone.utc)
+    current_year = now.strftime('%Y')
+    
+    orders = await db.orders.find(
+        {'order_number': {'$regex': f'^SIP-{current_year}'}, 'status': {'$ne': 'cancelled'}},
+        {"_id": 0, "total_amount": 1}
+    ).to_list(100000)
+    
+    total_revenue = sum(order.get('total_amount', 0) for order in orders)
+    total_orders = len(orders)
+    
+    return {
+        "year": current_year,
+        "total_orders": total_orders,
+        "total_revenue": total_revenue,
+        "average_order": total_revenue / total_orders if total_orders > 0 else 0
+    }
+
+@api_router.get("/admin/export/orders")
+async def export_orders(
+    format: str = "excel",
+    month: Optional[str] = None,
+    user: dict = Depends(require_admin)
+):
+    """Siparişleri export et (Excel veya PDF)"""
+    query = {}
+    if month:
+        query['order_number'] = {'$regex': f'^SIP-{month.replace("-", "")}'}
+    
+    orders = await db.orders.find(query, {"_id": 0}).sort("created_at", -1).to_list(10000)
+    
+    if format == "excel":
+        excel_bytes = excel_service.generate_orders_report(
+            orders,
+            title=f"Sipariş Raporu - {month or 'Tüm Zamanlar'}"
+        )
+        return StreamingResponse(
+            iter([excel_bytes]),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename=siparisler-{month or 'tum'}.xlsx"}
+        )
+    else:
+        raise HTTPException(status_code=400, detail="Sadece excel formatı destekleniyor")
+
+
+# ==================== COURIER ROUTES ====================
+
+@api_router.get("/courier/packages")
+async def get_packages(user: dict = Depends(require_courier)):
+    """Paket siparişleri getir (kurye için)"""
+    orders = await db.orders.find(
+        {
+            "order_type": "takeaway",
+            "status": {"$in": ["pending", "ready"]},
+            "courier_id": None
+        },
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    for order in orders:
+        if isinstance(order['created_at'], str):
+            order['created_at'] = datetime.fromisoformat(order['created_at'])
+        if isinstance(order['updated_at'], str):
+            order['updated_at'] = datetime.fromisoformat(order['updated_at'])
+    
+    return orders
+
+@api_router.get("/courier/my-orders")
+async def get_my_orders(user: dict = Depends(require_courier)):
+    """Kuryenin kendi siparişleri"""
+    courier_id = user.get('courier_id')
+    if not courier_id:
+        raise HTTPException(status_code=400, detail="Kurye ID bulunamadı")
+    
+    orders = await db.orders.find(
+        {"courier_id": courier_id, "status": {"$nin": ["delivered", "cancelled"]}},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    for order in orders:
+        if isinstance(order['created_at'], str):
+            order['created_at'] = datetime.fromisoformat(order['created_at'])
+        if isinstance(order['updated_at'], str):
+            order['updated_at'] = datetime.fromisoformat(order['updated_at'])
+    
+    return orders
+
+@api_router.put("/courier/orders/{order_id}/take")
+async def take_order(order_id: str, user: dict = Depends(require_courier)):
+    """Siparişi al"""
+    courier_id = user.get('courier_id')
+    if not courier_id:
+        raise HTTPException(status_code=400, detail="Kurye ID bulunamadı")
+    
+    # Courier bilgilerini getir
+    courier = await db.couriers.find_one({"id": courier_id})
+    if not courier:
+        raise HTTPException(status_code=404, detail="Kurye bulunamadı")
+    
+    courier_name = f"{courier['first_name']} {courier['last_name']}"
+    
+    # Siparişi güncelle
+    result = await db.orders.update_one(
+        {"id": order_id, "courier_id": None},
+        {"$set": {
+            "courier_id": courier_id,
+            "courier_name": courier_name,
+            "status": "preparing",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=400, detail="Sipariş zaten alınmış veya bulunamadı")
+    
+    # Kuryeyi meşgul yap
+    await db.couriers.update_one(
+        {"id": courier_id},
+        {"$set": {"is_available": False}}
+    )
+    
+    return {"message": "Sipariş alındı"}
+
+@api_router.put("/courier/orders/{order_id}/deliver")
+async def deliver_order(order_id: str, user: dict = Depends(require_courier)):
+    """Siparişi teslim et"""
+    courier_id = user.get('courier_id')
+    
+    result = await db.orders.update_one(
+        {"id": order_id, "courier_id": courier_id},
+        {"$set": {
+            "status": "delivered",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
+    
+    # Kuryeyi müsait yap
+    await db.couriers.update_one(
+        {"id": courier_id},
+        {"$set": {"is_available": True}}
+    )
+    
+    return {"message": "Sipariş teslim edildi"}
+
+@api_router.put("/courier/orders/{order_id}/cancel")
+async def cancel_order_courier(order_id: str, user: dict = Depends(require_courier)):
+    """Siparişi iptal et"""
+    courier_id = user.get('courier_id')
+    
+    result = await db.orders.update_one(
+        {"id": order_id, "courier_id": courier_id},
+        {"$set": {
+            "status": "cancelled",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
+    
+    # Kuryeyi müsait yap
+    await db.couriers.update_one(
+        {"id": courier_id},
+        {"$set": {"is_available": True}}
+    )
+    
+    return {"message": "Sipariş iptal edildi"}
+
+
+# ==================== PUBLIC ROUTES ====================
 
 @api_router.get("/")
 async def root():
-    return {"message": "Döner Restoranı POS API", "version": "1.0"}
+    return {"message": "Döner Restoranı POS API", "version": "2.0"}
 
 
 # ========== CATEGORY ENDPOINTS ==========
 
 @api_router.post("/categories", response_model=Category)
-async def create_category(input: CategoryCreate):
+async def create_category(input: CategoryCreate, user: dict = Depends(require_admin)):
     category = Category(**input.model_dump())
     doc = category.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
@@ -171,21 +504,11 @@ async def get_categories(active_only: bool = True):
             cat['created_at'] = datetime.fromisoformat(cat['created_at'])
     return categories
 
-@api_router.get("/categories/{category_id}", response_model=Category)
-async def get_category(category_id: str):
-    category = await db.categories.find_one({"id": category_id}, {"_id": 0})
-    if not category:
-        raise HTTPException(status_code=404, detail="Kategori bulunamadı")
-    if isinstance(category['created_at'], str):
-        category['created_at'] = datetime.fromisoformat(category['created_at'])
-    return category
-
 
 # ========== PRODUCT ENDPOINTS ==========
 
 @api_router.post("/products", response_model=Product)
-async def create_product(input: ProductCreate):
-    # Kategori var mı kontrol et
+async def create_product(input: ProductCreate, user: dict = Depends(require_admin)):
     category = await db.categories.find_one({"id": input.category_id})
     if not category:
         raise HTTPException(status_code=404, detail="Kategori bulunamadı")
@@ -210,30 +533,11 @@ async def get_products(category_id: Optional[str] = None, available_only: bool =
             prod['created_at'] = datetime.fromisoformat(prod['created_at'])
     return products
 
-@api_router.get("/products/{product_id}", response_model=Product)
-async def get_product(product_id: str):
-    product = await db.products.find_one({"id": product_id}, {"_id": 0})
-    if not product:
-        raise HTTPException(status_code=404, detail="Ürün bulunamadı")
-    if isinstance(product['created_at'], str):
-        product['created_at'] = datetime.fromisoformat(product['created_at'])
-    return product
-
-@api_router.put("/products/{product_id}/availability")
-async def update_product_availability(product_id: str, is_available: bool):
-    result = await db.products.update_one(
-        {"id": product_id},
-        {"$set": {"is_available": is_available}}
-    )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Ürün bulunamadı")
-    return {"message": "Ürün durumu güncellendi"}
-
 
 # ========== TABLE ENDPOINTS ==========
 
 @api_router.post("/tables", response_model=Table)
-async def create_table(input: TableCreate):
+async def create_table(input: TableCreate, user: dict = Depends(require_admin)):
     table = Table(**input.model_dump())
     doc = table.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
@@ -248,104 +552,39 @@ async def get_tables():
             table['created_at'] = datetime.fromisoformat(table['created_at'])
     return tables
 
-@api_router.put("/tables/{table_id}/status")
-async def update_table_status(table_id: str, is_occupied: bool):
-    result = await db.tables.update_one(
-        {"id": table_id},
-        {"$set": {"is_occupied": is_occupied}}
-    )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Masa bulunamadı")
-    return {"message": "Masa durumu güncellendi"}
 
-
-# ========== CUSTOMER ENDPOINTS ==========
-
-@api_router.post("/customers", response_model=Customer)
-async def create_customer(input: CustomerCreate):
-    customer = Customer(**input.model_dump())
-    doc = customer.model_dump()
-    doc['created_at'] = doc['created_at'].isoformat()
-    await db.customers.insert_one(doc)
-    return customer
-
-@api_router.get("/customers", response_model=List[Customer])
-async def get_customers():
-    customers = await db.customers.find({}, {"_id": 0}).to_list(200)
-    for cust in customers:
-        if isinstance(cust['created_at'], str):
-            cust['created_at'] = datetime.fromisoformat(cust['created_at'])
-    return customers
-
-
-# ========== COURIER ENDPOINTS ==========
-
-@api_router.post("/couriers", response_model=Courier)
-async def create_courier(input: CourierCreate):
-    courier = Courier(**input.model_dump())
-    doc = courier.model_dump()
-    doc['created_at'] = doc['created_at'].isoformat()
-    await db.couriers.insert_one(doc)
-    return courier
+# ========== COURIER ENDPOINTS (ADMIN) ==========
 
 @api_router.get("/couriers", response_model=List[Courier])
-async def get_couriers(available_only: bool = False):
-    query = {"is_available": True} if available_only else {}
+async def get_couriers(available_only: bool = False, approved_only: bool = True):
+    query = {}
+    if available_only:
+        query["is_available"] = True
+    if approved_only:
+        query["is_approved"] = True
+    
     couriers = await db.couriers.find(query, {"_id": 0}).to_list(100)
     for courier in couriers:
         if isinstance(courier['created_at'], str):
             courier['created_at'] = datetime.fromisoformat(courier['created_at'])
     return couriers
 
-@api_router.put("/couriers/{courier_id}/availability")
-async def update_courier_availability(courier_id: str, is_available: bool):
-    result = await db.couriers.update_one(
-        {"id": courier_id},
-        {"$set": {"is_available": is_available}}
-    )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Kurye bulunamadı")
-    return {"message": "Kurye durumu güncellendi"}
-
 
 # ========== ORDER ENDPOINTS ==========
 
 @api_router.post("/orders", response_model=Order)
 async def create_order(input: OrderCreate):
-    # Toplam tutarı hesapla
     total = sum(item.quantity * item.price for item in input.items)
-    
-    # Sipariş numarası oluştur
     order_number = await get_next_order_number()
     
-    # İlişkili bilgileri getir
     table_name = None
-    customer_name = None
-    courier_name = None
-    
     if input.table_id:
         table = await db.tables.find_one({"id": input.table_id})
         if table:
             table_name = f"Masa {table['table_number']}"
-            # Masayı dolu yap
             await db.tables.update_one(
                 {"id": input.table_id},
                 {"$set": {"is_occupied": True}}
-            )
-    
-    if input.customer_id:
-        customer = await db.customers.find_one({"id": input.customer_id})
-        if customer:
-            customer_name = customer['name']
-    
-    if input.courier_id:
-        courier = await db.couriers.find_one({"id": input.courier_id})
-        if courier:
-            courier_name = f"{courier['first_name']} {courier['last_name']}"
-            # Kuryeyi müsait değil yap
-            await db.couriers.update_one(
-                {"id": input.courier_id},
-                {"$set": {"is_available": False}}
             )
     
     order = Order(
@@ -355,10 +594,9 @@ async def create_order(input: OrderCreate):
         order_type=input.order_type,
         table_id=input.table_id,
         table_name=table_name,
-        customer_id=input.customer_id,
-        customer_name=customer_name,
-        courier_id=input.courier_id,
-        courier_name=courier_name,
+        customer_name=input.customer_name,
+        customer_phone=input.customer_phone,
+        customer_address=input.customer_address,
         notes=input.notes
     )
     
@@ -380,20 +618,8 @@ async def get_orders(status: Optional[str] = None):
             order['updated_at'] = datetime.fromisoformat(order['updated_at'])
     return orders
 
-@api_router.get("/orders/{order_id}", response_model=Order)
-async def get_order(order_id: str):
-    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
-    if not order:
-        raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
-    if isinstance(order['created_at'], str):
-        order['created_at'] = datetime.fromisoformat(order['created_at'])
-    if isinstance(order['updated_at'], str):
-        order['updated_at'] = datetime.fromisoformat(order['updated_at'])
-    return order
-
 @api_router.put("/orders/{order_id}/status")
 async def update_order_status(order_id: str, status: str):
-    """Sipariş durumunu güncelle"""
     valid_statuses = ["pending", "preparing", "ready", "delivered", "cancelled"]
     if status not in valid_statuses:
         raise HTTPException(status_code=400, detail="Geçersiz durum")
@@ -402,7 +628,7 @@ async def update_order_status(order_id: str, status: str):
     if not order:
         raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
     
-    result = await db.orders.update_one(
+    await db.orders.update_one(
         {"id": order_id},
         {"$set": {
             "status": status,
@@ -410,7 +636,6 @@ async def update_order_status(order_id: str, status: str):
         }}
     )
     
-    # Sipariş tamamlandıysa masa ve kuryeyi serbest bırak
     if status in ["delivered", "cancelled"]:
         if order.get('table_id'):
             await db.tables.update_one(
@@ -425,52 +650,14 @@ async def update_order_status(order_id: str, status: str):
     
     return {"message": "Sipariş durumu güncellendi"}
 
-@api_router.put("/orders/{order_id}/assign-courier")
-async def assign_courier_to_order(order_id: str, input: AssignCourier):
-    """Siparişe kurye ata"""
-    order = await db.orders.find_one({"id": order_id})
-    if not order:
-        raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
-    
-    courier = await db.couriers.find_one({"id": input.courier_id})
-    if not courier:
-        raise HTTPException(status_code=404, detail="Kurye bulunamadı")
-    
-    if not courier.get('is_available', False):
-        raise HTTPException(status_code=400, detail="Kurye müsait değil")
-    
-    courier_name = f"{courier['first_name']} {courier['last_name']}"
-    
-    # Siparişi güncelle
-    await db.orders.update_one(
-        {"id": order_id},
-        {"$set": {
-            "courier_id": input.courier_id,
-            "courier_name": courier_name,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
-    )
-    
-    # Kuryeyi müsait değil yap
-    await db.couriers.update_one(
-        {"id": input.courier_id},
-        {"$set": {"is_available": False}}
-    )
-    
-    return {"message": "Kurye atandı", "courier_name": courier_name}
-
 @api_router.get("/orders/{order_id}/receipt")
 async def generate_receipt(order_id: str):
-    """Sipariş fişi PDF oluştur ve döndür"""
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
     
-    # PDF oluştur
     try:
         pdf_bytes = pdf_service.generate_receipt(order)
-        
-        # PDF'i stream olarak döndür
         return StreamingResponse(
             iter([pdf_bytes]),
             media_type="application/pdf",
@@ -487,16 +674,13 @@ async def generate_receipt(order_id: str):
 
 @api_router.get("/stats/dashboard")
 async def get_dashboard_stats():
-    """Dashboard istatistikleri"""
     total_orders = await db.orders.count_documents({})
     pending_orders = await db.orders.count_documents({"status": "pending"})
     preparing_orders = await db.orders.count_documents({"status": "preparing"})
     
-    # Bugünkü siparişler
     today = datetime.now(timezone.utc).strftime('%Y%m%d')
     today_orders = await db.orders.count_documents({'order_number': {'$regex': f'^SIP-{today}'}})
     
-    # Toplam gelir (bugün)
     today_orders_data = await db.orders.find(
         {'order_number': {'$regex': f'^SIP-{today}'}, 'status': {'$ne': 'cancelled'}},
         {"_id": 0, "total_amount": 1}
@@ -504,7 +688,7 @@ async def get_dashboard_stats():
     today_revenue = sum(order.get('total_amount', 0) for order in today_orders_data)
     
     occupied_tables = await db.tables.count_documents({"is_occupied": True})
-    available_couriers = await db.couriers.count_documents({"is_available": True})
+    available_couriers = await db.couriers.count_documents({"is_available": True, "is_approved": True})
     
     return {
         "total_orders": total_orders,
@@ -528,7 +712,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
