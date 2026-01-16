@@ -290,6 +290,39 @@ export default function POSScreen() {
           </div>
         )}
 
+        {/* Müşteri Formu (Paket için) */}
+        {orderType === 'takeaway' && (
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <h3 className="font-semibold text-lg mb-3">Müşteri Bilgileri</h3>
+            <div className="space-y-3">
+              <input
+                type="text"
+                placeholder="Müşteri Adı"
+                value={customerForm.name}
+                onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                data-testid="customer-name"
+              />
+              <input
+                type="tel"
+                placeholder="Telefon"
+                value={customerForm.phone}
+                onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                data-testid="customer-phone"
+              />
+              <textarea
+                placeholder="Adres"
+                value={customerForm.address}
+                onChange={(e) => setCustomerForm({ ...customerForm, address: e.target.value })}
+                rows={3}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                data-testid="customer-address"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Sepet */}
         <div className="bg-white rounded-lg shadow-md p-4">
           <div className="flex items-center justify-between mb-3">
