@@ -39,6 +39,15 @@ export default function CourierDashboard() {
     }
   };
 
+  const loadStats = async () => {
+    try {
+      const statsData = await getMyStats();
+      setStats(statsData);
+    } catch (error) {
+      console.error('İstatistik yükleme hatası:', error);
+    }
+  };
+
   const handleTakeOrder = async (orderId) => {
     setLoading(true);
     try {
