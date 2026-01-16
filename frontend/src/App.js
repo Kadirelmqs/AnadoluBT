@@ -1,51 +1,76 @@
-import { useEffect } from "react";
-import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import { useState, useEffect } from 'react';
+import '@/App.css';
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Home, ShoppingCart, Package, Users, Bike, Settings, BarChart3 } from 'lucide-react';
+import POSScreen from './pages/POSScreen';
+import OrdersPage from './pages/OrdersPage';
+import CouriersPage from './pages/CouriersPage';
+import ManagementPage from './pages/ManagementPage';
+import DashboardPage from './pages/DashboardPage';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
+function Navigation() {
+  const location = useLocation();
+  
+  const navItems = [
+    { path: '/', icon: Home, label: 'POS' },
+    { path: '/orders', icon: Package, label: 'Siparişler' },
+    { path: '/couriers', icon: Bike, label: 'Kuryeler' },
+    { path: '/dashboard', icon: BarChart3, label: 'İstatistikler' },
+    { path: '/management', icon: Settings, label: 'Yönetim' },
+  ];
+  
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
+    <nav className="bg-gradient-to-r from-orange-600 to-red-600 shadow-lg">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex justify-between items-center py-3">
+          <div className="flex items-center space-x-2">
+            <ShoppingCart className="h-8 w-8 text-white" />
+            <span className="text-white font-bold text-xl">Döner Restoranı POS</span>
+          </div>
+          
+          <div className="flex space-x-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
+                    isActive
+                      ? 'bg-white text-orange-600 shadow-md'
+                      : 'text-white hover:bg-white/20'
+                  }`}
+                  data-testid={`nav-${item.label.toLowerCase()}`}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="font-medium hidden md:inline">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </nav>
   );
-};
+}
 
 function App() {
   return (
-    <div className="App">
+    <div className="App min-h-screen bg-gray-50">
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
+        <Navigation />
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <Routes>
+            <Route path="/" element={<POSScreen />} />
+            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/couriers" element={<CouriersPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/management" element={<ManagementPage />} />
+          </Routes>
+        </div>
       </BrowserRouter>
     </div>
   );
