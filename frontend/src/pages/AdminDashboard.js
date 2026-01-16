@@ -39,16 +39,38 @@ export default function AdminDashboard() {
         const data = await getCouriers(false, true);
         setApprovedCouriers(data);
       } else if (activeTab === 'stats') {
-        const [monthly, yearly] = await Promise.all([
+        const [monthly, yearly, couriers] = await Promise.all([
           getMonthlyStats(),
-          getYearlyStats()
+          getYearlyStats(),
+          getCourierStats()
         ]);
         setMonthlyStats(monthly);
         setYearlyStats(yearly);
+        setCourierStats(couriers);
       }
     } catch (error) {
       console.error('Veri yükleme hatası:', error);
     }
+  };
+
+  const checkPassword = () => {
+    if (password === '1234') {
+      setIsUnlocked(true);
+      setShowPasswordModal(false);
+      setPassword('');
+      toast.success('Admin paneline erişim sağlandı');
+    } else {
+      toast.error('Hatalı şifre!');
+      setPassword('');
+    }
+  };
+
+  const handleTabClick = (tab) => {
+    if (!isUnlocked) {
+      setShowPasswordModal(true);
+      return;
+    }
+    setActiveTab(tab);
   };
 
   const handleApproveCourier = async (courierId) => {
