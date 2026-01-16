@@ -347,6 +347,11 @@ export default function CourierDashboard() {
             )}
           </div>
         )}
+
+        {/* Footer */}
+        <div className="mt-8 text-center">
+          <p className="text-xs text-gray-500">Powered by <span className="font-semibold text-orange-600">Anadolu BT</span></p>
+        </div>
       </div>
     </div>
   );
