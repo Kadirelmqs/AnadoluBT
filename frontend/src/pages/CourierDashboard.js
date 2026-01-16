@@ -117,6 +117,36 @@ export default function CourierDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* İstatistikler */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <div className="flex items-center">
+              <div className="bg-green-100 rounded-lg p-3 mr-3">
+                <Package className="h-6 w-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Bugünkü Teslimat</p>
+                <p className="text-2xl font-bold text-green-600" data-testid="deliveries-today">
+                  {stats?.deliveries_today || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <div className="flex items-center">
+              <div className="bg-blue-100 rounded-lg p-3 mr-3">
+                <DollarSign className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Bugünkü Gelir</p>
+                <p className="text-2xl font-bold text-blue-600" data-testid="revenue-today">
+                  {stats?.revenue_today?.toFixed(2) || '0.00'} ₺
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           <button
