@@ -13,6 +13,11 @@ export default function POSScreen() {
   const [orderType, setOrderType] = useState('dine-in');
   const [loading, setLoading] = useState(false);
   const [lastOrderId, setLastOrderId] = useState(null);
+  const [customerForm, setCustomerForm] = useState({
+    name: '',
+    phone: '',
+    address: ''
+  });
 
   useEffect(() => {
     loadInitialData();
