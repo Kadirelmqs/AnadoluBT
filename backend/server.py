@@ -350,6 +350,68 @@ async def export_orders(
     else:
         raise HTTPException(status_code=400, detail="Sadece excel formatı destekleniyor")
 
+@api_router.get("/admin/export/daily")
+async def export_daily_and_clear(user: dict = Depends(require_admin)):
+    """Günlük raporu indir ve o günün siparişlerini sil"""
+    today = datetime.now(timezone.utc).strftime('%Y%m%d')
+    
+    # Bugünün siparişlerini getir
+    orders = await db.orders.find(
+        {'order_number': {'$regex': f'^SIP-{today}'}},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(10000)
+    
+    if len(orders) == 0:
+        raise HTTPException(status_code=404, detail="Bugün sipariş bulunamadı")
+    
+    # Excel oluştur
+    excel_bytes = excel_service.generate_orders_report(
+        orders,
+        title=f"Gün Sonu Raporu - {datetime.now(timezone.utc).strftime('%d.%m.%Y')}"
+    )
+    
+    # Bugünün siparişlerini sil
+    await db.orders.delete_many({'order_number': {'$regex': f'^SIP-{today}'}})
+    
+    return StreamingResponse(
+        iter([excel_bytes]),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=gun-sonu-{today}.xlsx"}
+    )
+
+@api_router.get("/admin/courier-stats")
+async def get_courier_daily_stats(user: dict = Depends(require_admin)):
+    """Kuryelerin bugünkü teslimat istatistikleri"""
+    today = datetime.now(timezone.utc).strftime('%Y%m%d')
+    
+    # Bugün teslim edilen paket siparişleri
+    delivered_orders = await db.orders.find(
+        {
+            'order_number': {'$regex': f'^SIP-{today}'},
+            'order_type': 'takeaway',
+            'status': 'delivered',
+            'courier_id': {'$ne': None}
+        },
+        {"_id": 0, "courier_id": 1, "courier_name": 1, "total_amount": 1}
+    ).to_list(10000)
+    
+    # Kurye bazında grupla
+    stats = {}
+    for order in delivered_orders:
+        courier_id = order.get('courier_id')
+        if courier_id:
+            if courier_id not in stats:
+                stats[courier_id] = {
+                    'courier_id': courier_id,
+                    'courier_name': order.get('courier_name', 'Bilinmeyen'),
+                    'deliveries': 0,
+                    'total_revenue': 0
+                }
+            stats[courier_id]['deliveries'] += 1
+            stats[courier_id]['total_revenue'] += order.get('total_amount', 0)
+    
+    return list(stats.values())
+
 
 # ==================== COURIER ROUTES ====================
 
