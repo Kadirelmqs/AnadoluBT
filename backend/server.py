@@ -539,6 +539,36 @@ async def cancel_order_courier(order_id: str, user: dict = Depends(require_couri
     
     return {"message": "Sipariş iptal edildi"}
 
+@api_router.get("/courier/my-stats")
+async def get_my_stats(user: dict = Depends(require_courier)):
+    """Kuryenin bugünkü istatistikleri"""
+    courier_id = user.get('courier_id')
+    today = datetime.now(timezone.utc).strftime('%Y%m%d')
+    
+    # Bugün teslim edilen siparişler
+    delivered = await db.orders.count_documents({
+        'order_number': {'$regex': f'^SIP-{today}'},
+        'courier_id': courier_id,
+        'status': 'delivered'
+    })
+    
+    # Bugünkü gelir
+    delivered_orders = await db.orders.find(
+        {
+            'order_number': {'$regex': f'^SIP-{today}'},
+            'courier_id': courier_id,
+            'status': 'delivered'
+        },
+        {"_id": 0, "total_amount": 1}
+    ).to_list(1000)
+    
+    total_revenue = sum(order.get('total_amount', 0) for order in delivered_orders)
+    
+    return {
+        'deliveries_today': delivered,
+        'revenue_today': total_revenue
+    }
+
 
 # ==================== PUBLIC ROUTES ====================
 
