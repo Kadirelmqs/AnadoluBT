@@ -209,9 +209,9 @@ export default function POSScreen() {
       {/* Sepet ve Sipariş Paneli */}
       <div className="space-y-4">
         {/* Sipariş Tipi */}
-        <div className=\"bg-white rounded-lg shadow-md p-4\">
-          <h3 className=\"font-semibold text-lg mb-3\">Sipariş Tipi</h3>
-          <div className=\"grid grid-cols-3 gap-2\">
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <h3 className="font-semibold text-lg mb-3">Sipariş Tipi</h3>
+          <div className="grid grid-cols-3 gap-2">
             <button
               onClick={() => setOrderType('dine-in')}
               className={`px-3 py-2 rounded-lg font-medium text-sm transition-all ${
@@ -219,7 +219,7 @@ export default function POSScreen() {
                   ? 'bg-orange-600 text-white'
                   : 'bg-gray-100 text-gray-700'
               }`}
-              data-testid=\"order-type-dine-in\"
+              data-testid="order-type-dine-in"
             >
               İçeride
             </button>
@@ -230,7 +230,7 @@ export default function POSScreen() {
                   ? 'bg-orange-600 text-white'
                   : 'bg-gray-100 text-gray-700'
               }`}
-              data-testid=\"order-type-takeaway\"
+              data-testid="order-type-takeaway"
             >
               Paket
             </button>
@@ -241,7 +241,7 @@ export default function POSScreen() {
                   ? 'bg-orange-600 text-white'
                   : 'bg-gray-100 text-gray-700'
               }`}
-              data-testid=\"order-type-delivery\"
+              data-testid="order-type-delivery"
             >
               Gel-Al
             </button>
@@ -250,9 +250,9 @@ export default function POSScreen() {
 
         {/* Masa Seçimi */}
         {orderType === 'dine-in' && (
-          <div className=\"bg-white rounded-lg shadow-md p-4\">
-            <h3 className=\"font-semibold text-lg mb-3\">Masa Seçin</h3>
-            <div className=\"grid grid-cols-3 gap-2 max-h-48 overflow-y-auto custom-scroll\">
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <h3 className="font-semibold text-lg mb-3">Masa Seçin</h3>
+            <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto custom-scroll">
               {tables.map((table) => (
                 <button
                   key={table.id}
@@ -275,53 +275,53 @@ export default function POSScreen() {
         )}
 
         {/* Sepet */}
-        <div className=\"bg-white rounded-lg shadow-md p-4\">
-          <div className=\"flex items-center justify-between mb-3\">
-            <h3 className=\"font-semibold text-lg flex items-center\">
-              <ShoppingCart className=\"h-5 w-5 mr-2\" />
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-lg flex items-center">
+              <ShoppingCart className="h-5 w-5 mr-2" />
               Sepet
             </h3>
-            <span className=\"text-sm text-gray-500\">{cart.length} ürün</span>
+            <span className="text-sm text-gray-500">{cart.length} ürün</span>
           </div>
 
-          <div className=\"space-y-2 max-h-64 overflow-y-auto custom-scroll mb-4\">
+          <div className="space-y-2 max-h-64 overflow-y-auto custom-scroll mb-4">
             {cart.length === 0 ? (
-              <div className=\"text-center text-gray-400 py-8\">
+              <div className="text-center text-gray-400 py-8">
                 Sepet boş
               </div>
             ) : (
               cart.map((item) => (
                 <div
                   key={item.product_id}
-                  className=\"bg-gray-50 rounded-lg p-3 flex items-center justify-between\"
+                  className="bg-gray-50 rounded-lg p-3 flex items-center justify-between"
                   data-testid={`cart-item-${item.product_name.toLowerCase()}`}
                 >
-                  <div className=\"flex-1\">
-                    <div className=\"font-medium text-sm\">{item.product_name}</div>
-                    <div className=\"text-orange-600 font-semibold\">{item.price.toFixed(2)} ₺</div>
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{item.product_name}</div>
+                    <div className="text-orange-600 font-semibold">{item.price.toFixed(2)} ₺</div>
                   </div>
-                  <div className=\"flex items-center space-x-2\">
+                  <div className="flex items-center space-x-2">
                     <button
                       onClick={() => updateQuantity(item.product_id, -1)}
-                      className=\"bg-gray-200 rounded p-1 hover:bg-gray-300\"
+                      className="bg-gray-200 rounded p-1 hover:bg-gray-300"
                       data-testid={`decrease-${item.product_name.toLowerCase()}`}
                     >
-                      <Minus className=\"h-4 w-4\" />
+                      <Minus className="h-4 w-4" />
                     </button>
-                    <span className=\"font-semibold w-8 text-center\">{item.quantity}</span>
+                    <span className="font-semibold w-8 text-center">{item.quantity}</span>
                     <button
                       onClick={() => updateQuantity(item.product_id, 1)}
-                      className=\"bg-gray-200 rounded p-1 hover:bg-gray-300\"
+                      className="bg-gray-200 rounded p-1 hover:bg-gray-300"
                       data-testid={`increase-${item.product_name.toLowerCase()}`}
                     >
-                      <Plus className=\"h-4 w-4\" />
+                      <Plus className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => removeFromCart(item.product_id)}
-                      className=\"bg-red-100 text-red-600 rounded p-1 hover:bg-red-200 ml-2\"
+                      className="bg-red-100 text-red-600 rounded p-1 hover:bg-red-200 ml-2"
                       data-testid={`remove-${item.product_name.toLowerCase()}`}
                     >
-                      <Trash2 className=\"h-4 w-4\" />
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -330,28 +330,28 @@ export default function POSScreen() {
           </div>
 
           {/* Toplam */}
-          <div className=\"border-t pt-3 space-y-2\">
-            <div className=\"flex justify-between text-sm\">
+          <div className="border-t pt-3 space-y-2">
+            <div className="flex justify-between text-sm">
               <span>Ara Toplam:</span>
-              <span className=\"font-semibold\">{calculateTotal().toFixed(2)} ₺</span>
+              <span className="font-semibold">{calculateTotal().toFixed(2)} ₺</span>
             </div>
-            <div className=\"flex justify-between text-sm\">
+            <div className="flex justify-between text-sm">
               <span>KDV (10%):</span>
-              <span className=\"font-semibold\">{(calculateTotal() * 0.10).toFixed(2)} ₺</span>
+              <span className="font-semibold">{(calculateTotal() * 0.10).toFixed(2)} ₺</span>
             </div>
-            <div className=\"flex justify-between text-lg font-bold border-t pt-2\">
+            <div className="flex justify-between text-lg font-bold border-t pt-2">
               <span>TOPLAM:</span>
-              <span className=\"text-orange-600\">{(calculateTotal() * 1.10).toFixed(2)} ₺</span>
+              <span className="text-orange-600">{(calculateTotal() * 1.10).toFixed(2)} ₺</span>
             </div>
           </div>
 
           {/* Aksiyonlar */}
-          <div className=\"space-y-2 mt-4\">
+          <div className="space-y-2 mt-4">
             <button
               onClick={handleCreateOrder}
               disabled={loading || cart.length === 0}
-              className=\"w-full bg-gradient-to-r from-orange-600 to-red-600 text-white py-3 rounded-lg font-semibold hover:from-orange-700 hover:to-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all\"
-              data-testid=\"create-order-btn\"
+              className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white py-3 rounded-lg font-semibold hover:from-orange-700 hover:to-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              data-testid="create-order-btn"
             >
               {loading ? 'İşleniyor...' : 'Sipariş Oluştur'}
             </button>
@@ -359,10 +359,10 @@ export default function POSScreen() {
             {lastOrderId && (
               <button
                 onClick={handlePrintReceipt}
-                className=\"w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all flex items-center justify-center\"
-                data-testid=\"print-receipt-btn\"
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all flex items-center justify-center"
+                data-testid="print-receipt-btn"
               >
-                <FileText className=\"h-5 w-5 mr-2\" />
+                <FileText className="h-5 w-5 mr-2" />
                 Fiş Yazdır
               </button>
             )}
