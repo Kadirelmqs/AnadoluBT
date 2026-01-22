@@ -1,18 +1,31 @@
-import { useEffect } from 'react';
 import '@/App.css';
-import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Home, ShoppingCart, Package, Users, Bike, Settings, BarChart3 } from 'lucide-react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
-// Pages
-import LoginPage from './pages/LoginPage';
+// Login Pages
+import POSLogin from './pages/login/POSLogin';
+import AdminLogin from './pages/login/AdminLogin';
+import CourierLogin from './pages/login/CourierLogin';
+import DeveloperLogin from './pages/login/DeveloperLogin';
+
+// POS Pages
+import POSLayout from './layouts/POSLayout';
 import POSScreen from './pages/POSScreen';
 import OrdersPage from './pages/OrdersPage';
 import CouriersPage from './pages/CouriersPage';
-import ManagementPage from './pages/ManagementPage';
 import DashboardPage from './pages/DashboardPage';
-import CourierDashboard from './pages/CourierDashboard';
+
+// Admin Pages
+import AdminLayout from './layouts/AdminLayout';
 import AdminDashboard from './pages/AdminDashboard';
+import ManagementPage from './pages/ManagementPage';
+
+// Courier Pages
+import CourierDashboard from './pages/CourierDashboard';
+
+// Developer Pages
+import DeveloperLayout from './layouts/DeveloperLayout';
+import DeveloperDashboard from './pages/DeveloperDashboard';
 
 // Protected Route Component
 function ProtectedRoute({ children, allowedRoles }) {
@@ -27,176 +40,44 @@ function ProtectedRoute({ children, allowedRoles }) {
   }
   
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login/pos" replace />;
   }
   
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login/pos" replace />;
   }
   
   return children;
 }
 
-// Navigation for Admin
-function AdminNav() {
-  const location = useLocation();
-  
-  const navItems = [
-    { path: '/', icon: Home, label: 'POS' },
-    { path: '/orders', icon: Package, label: 'Siparişler' },
-    { path: '/couriers', icon: Bike, label: 'Kuryeler' },
-    { path: '/dashboard', icon: BarChart3, label: 'İstatistikler' },
-    { path: '/management', icon: Settings, label: 'Yönetim' },
-    { path: '/admin', icon: Users, label: 'Admin Panel' },
-  ];
-  
-  return (
-    <nav className="bg-gradient-to-r from-orange-600 to-red-600 shadow-lg">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex justify-between items-center py-3">
-          <div className="flex items-center space-x-2">
-            <div className="bg-white rounded-full p-2">
-              <span className="text-orange-600 font-bold text-lg">AB</span>
-            </div>
-            <span className="text-white font-bold text-xl">Anadolu BT POS</span>
-          </div>
-          
-          <div className="flex space-x-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
-                    isActive
-                      ? 'bg-white text-orange-600 shadow-md'
-                      : 'text-white hover:bg-white/20'
-                  }`}
-                  data-testid={`nav-${item.label.toLowerCase()}`}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="font-medium hidden md:inline">{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-// Admin Routes Layout
-function AdminLayout({ children }) {
-  return (
-    <div className="App min-h-screen bg-gray-50 flex flex-col">
-      <AdminNav />
-      <div className="max-w-7xl mx-auto px-4 py-6 flex-1">
-        {children}
-      </div>
-      <footer className="bg-white border-t py-3">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-xs text-gray-500">
-            Powered by <span className="font-semibold text-orange-600">Anadolu BT</span>
-          </p>
-        </div>
-      </footer>
-    </div>
-  );
-}
-
 function AppRoutes() {
-  const { user } = useAuth();
-
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      {/* Login Routes */}
+      <Route path="/login/pos" element={<POSLogin />} />
+      <Route path="/login/admin" element={<AdminLogin />} />
+      <Route path="/login/courier" element={<CourierLogin />} />
+      <Route path="/login/developer" element={<DeveloperLogin />} />
       
-      {/* Courier Routes */}
-      <Route
-        path="/courier"
-        element={
-          <ProtectedRoute allowedRoles={['courier']}>
-            <CourierDashboard />
-          </ProtectedRoute>
-        }
-      />
+      {/* POS Routes */}
+      <Route path="/pos" element={<ProtectedRoute allowedRoles={['admin']}><POSLayout><POSScreen /></POSLayout></ProtectedRoute>} />
+      <Route path="/pos/orders" element={<ProtectedRoute allowedRoles={['admin']}><POSLayout><OrdersPage /></POSLayout></ProtectedRoute>} />
+      <Route path="/pos/couriers" element={<ProtectedRoute allowedRoles={['admin']}><POSLayout><CouriersPage /></POSLayout></ProtectedRoute>} />
+      <Route path="/pos/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><POSLayout><DashboardPage /></POSLayout></ProtectedRoute>} />
       
       {/* Admin Routes */}
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/management" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout><ManagementPage /></AdminLayout></ProtectedRoute>} />
       
-      {/* POS Routes (Admin only) */}
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminLayout>
-              <POSScreen />
-            </AdminLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/orders"
-        element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminLayout>
-              <OrdersPage />
-            </AdminLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/couriers"
-        element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminLayout>
-              <CouriersPage />
-            </AdminLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminLayout>
-              <DashboardPage />
-            </AdminLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/management"
-        element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminLayout>
-              <ManagementPage />
-            </AdminLayout>
-          </ProtectedRoute>
-        }
-      />
+      {/* Courier Routes */}
+      <Route path="/courier" element={<ProtectedRoute allowedRoles={['courier']}><CourierDashboard /></ProtectedRoute>} />
       
-      {/* Default Redirect */}
-      <Route
-        path="*"
-        element={
-          user ? (
-            user.role === 'admin' ? <Navigate to="/" replace /> : <Navigate to="/courier" replace />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
+      {/* Developer Routes */}
+      <Route path="/developer" element={<ProtectedRoute allowedRoles={['developer']}><DeveloperLayout><DeveloperDashboard /></DeveloperLayout></ProtectedRoute>} />
+      
+      {/* Default Redirects */}
+      <Route path="/" element={<Navigate to="/login/pos" replace />} />
+      <Route path="*" element={<Navigate to="/login/pos" replace />} />
     </Routes>
   );
 }
