@@ -412,6 +412,66 @@ async def get_courier_daily_stats(user: dict = Depends(require_admin)):
     
     return list(stats.values())
 
+@api_router.get("/admin/courier/{courier_id}/history")
+async def get_courier_history(courier_id: str, user: dict = Depends(require_admin)):
+    """Belirli bir kuryenin bugünkü sipariş geçmişi"""
+    today = datetime.now(timezone.utc).strftime('%Y%m%d')
+    
+    orders = await db.orders.find(
+        {
+            'order_number': {'$regex': f'^SIP-{today}'},
+            'courier_id': courier_id
+        },
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    
+    for order in orders:
+        if isinstance(order['created_at'], str):
+            order['created_at'] = datetime.fromisoformat(order['created_at'])
+        if isinstance(order['updated_at'], str):
+            order['updated_at'] = datetime.fromisoformat(order['updated_at'])
+    
+    return orders
+
+@api_router.post("/admin/courier/{courier_id}/settle")
+async def settle_courier_account(courier_id: str, user: dict = Depends(require_admin)):
+    """Kurye hesabı kes - Excel indir ve geçmişi sil"""
+    today = datetime.now(timezone.utc).strftime('%Y%m%d')
+    
+    # Kuryenin bugünkü siparişlerini getir
+    orders = await db.orders.find(
+        {
+            'order_number': {'$regex': f'^SIP-{today}'},
+            'courier_id': courier_id
+        },
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    
+    if len(orders) == 0:
+        raise HTTPException(status_code=404, detail="Bu kurye için bugün sipariş bulunamadı")
+    
+    # Kurye adını al
+    courier = await db.couriers.find_one({"id": courier_id})
+    courier_name = f"{courier['first_name']}_{courier['last_name']}" if courier else "Kurye"
+    
+    # Excel oluştur
+    excel_bytes = excel_service.generate_orders_report(
+        orders,
+        title=f"Kurye Hesabı - {courier_name} - {datetime.now(timezone.utc).strftime('%d.%m.%Y')}"
+    )
+    
+    # Kuryenin bugünkü siparişlerini sil
+    await db.orders.delete_many({
+        'order_number': {'$regex': f'^SIP-{today}'},
+        'courier_id': courier_id
+    })
+    
+    return StreamingResponse(
+        iter([excel_bytes]),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=kurye-hesap-{courier_name}-{today}.xlsx"}
+    )
+
 
 # ==================== COURIER ROUTES ====================
 
