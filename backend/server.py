@@ -726,6 +726,34 @@ async def get_tables():
             table['created_at'] = datetime.fromisoformat(table['created_at'])
     return tables
 
+@api_router.put("/tables/{table_id}/status")
+async def update_table_status(table_id: str, is_occupied: bool):
+    result = await db.tables.update_one(
+        {"id": table_id},
+        {"$set": {"is_occupied": is_occupied}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Masa bulunamadı")
+    return {"message": "Masa durumu güncellendi"}
+
+@api_router.put("/tables/{table_id}/toggle")
+async def toggle_table_status(table_id: str):
+    """Masa durumunu değiştir (dolu <-> boş)"""
+    table = await db.tables.find_one({"id": table_id})
+    if not table:
+        raise HTTPException(status_code=404, detail="Masa bulunamadı")
+    
+    new_status = not table.get('is_occupied', False)
+    await db.tables.update_one(
+        {"id": table_id},
+        {"$set": {"is_occupied": new_status}}
+    )
+    
+    return {
+        "message": "Masa durumu değiştirildi",
+        "is_occupied": new_status
+    }
+
 
 # ========== COURIER ENDPOINTS (ADMIN) ==========
 
