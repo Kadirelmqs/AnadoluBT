@@ -33,7 +33,7 @@ export default function CourierDashboard() {
       if (activeTab === 'packages') {
         const packagesData = await getPackages();
         setPackages(packagesData);
-      } else {
+      } else if (activeTab === 'my-orders') {
         const ordersData = await getMyOrders();
         setMyOrders(ordersData);
       }
@@ -48,6 +48,15 @@ export default function CourierDashboard() {
       setStats(statsData);
     } catch (error) {
       console.error('İstatistik yükleme hatası:', error);
+    }
+  };
+
+  const loadHistory = async () => {
+    try {
+      const historyData = await getMyHistory();
+      setHistory(historyData);
+    } catch (error) {
+      console.error('Geçmiş yükleme hatası:', error);
     }
   };
 
