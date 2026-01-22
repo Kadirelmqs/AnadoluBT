@@ -98,6 +98,28 @@ export const getMyStats = async () => {
   return response.data;
 };
 
+export const getMyHistory = async () => {
+  const response = await api.get('/courier/my-history');
+  return response.data;
+};
+
+export const getCourierHistory = async (courierId) => {
+  const response = await api.get(`/admin/courier/${courierId}/history`);
+  return response.data;
+};
+
+export const settleCourierAccount = async (courierId) => {
+  const response = await api.post(`/admin/courier/${courierId}/settle`, null, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+export const toggleTableStatus = async (tableId) => {
+  const response = await api.put(`/tables/${tableId}/toggle`);
+  return response.data;
+};
+
 export const takeOrder = async (orderId) => {
   const response = await api.put(`/courier/orders/${orderId}/take`);
   return response.data;
