@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, FileText } from 'lucide-react';
-import { getProducts, getCategories, getTables, getCouriers, createOrder, downloadReceipt } from '../services/api';
+import { ShoppingCart, Plus, Minus, Trash2, FileText, ToggleLeft, ToggleRight } from 'lucide-react';
+import { getProducts, getCategories, getTables, getCouriers, createOrder, downloadReceipt, toggleTableStatus } from '../services/api';
 import { toast } from 'sonner';
 
 export default function POSScreen() {
