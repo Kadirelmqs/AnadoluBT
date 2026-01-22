@@ -141,6 +141,18 @@ export default function POSScreen() {
     }
   };
 
+  const handleToggleTable = async (tableId) => {
+    try {
+      const response = await toggleTableStatus(tableId);
+      toast.success('Masa durumu değiştirildi');
+      // Masaları yenile
+      const tablesData = await getTables();
+      setTables(tablesData);
+    } catch (error) {
+      toast.error('Masa durumu değiştirilemedi');
+    }
+  };
+
   const handlePrintReceipt = async () => {
     if (!lastOrderId) {
       toast.error('Yazdırılacak sipariş bulunamadı');
