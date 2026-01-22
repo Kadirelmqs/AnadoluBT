@@ -569,6 +569,28 @@ async def get_my_stats(user: dict = Depends(require_courier)):
         'revenue_today': total_revenue
     }
 
+@api_router.get("/courier/my-history")
+async def get_my_history(user: dict = Depends(require_courier)):
+    """Kuryenin bugünkü sipariş geçmişi (tüm siparişler)"""
+    courier_id = user.get('courier_id')
+    today = datetime.now(timezone.utc).strftime('%Y%m%d')
+    
+    orders = await db.orders.find(
+        {
+            'order_number': {'$regex': f'^SIP-{today}'},
+            'courier_id': courier_id
+        },
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    
+    for order in orders:
+        if isinstance(order['created_at'], str):
+            order['created_at'] = datetime.fromisoformat(order['created_at'])
+        if isinstance(order['updated_at'], str):
+            order['updated_at'] = datetime.fromisoformat(order['updated_at'])
+    
+    return orders
+
 
 # ==================== PUBLIC ROUTES ====================
 
