@@ -282,21 +282,37 @@ export default function POSScreen() {
             <h3 className="font-semibold text-lg mb-3">Masa Seçin</h3>
             <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto custom-scroll">
               {tables.map((table) => (
-                <button
-                  key={table.id}
-                  onClick={() => setSelectedTable(table.id)}
-                  disabled={table.is_occupied}
-                  className={`px-3 py-3 rounded-lg font-medium text-sm transition-all ${
-                    selectedTable === table.id
-                      ? 'bg-orange-600 text-white'
-                      : table.is_occupied
-                      ? 'bg-red-100 text-red-400 cursor-not-allowed'
-                      : 'bg-green-100 text-green-700 hover:bg-green-200'
-                  }`}
-                  data-testid={`table-${table.table_number}`}
-                >
-                  {table.table_number}
-                </button>
+                <div key={table.id} className="relative">
+                  <button
+                    onClick={() => setSelectedTable(table.id)}
+                    disabled={table.is_occupied}
+                    className={`w-full px-3 py-3 rounded-lg font-medium text-sm transition-all ${
+                      selectedTable === table.id
+                        ? 'bg-orange-600 text-white'
+                        : table.is_occupied
+                        ? 'bg-red-100 text-red-400 cursor-not-allowed'
+                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                    }`}
+                    data-testid={`table-${table.table_number}`}
+                  >
+                    {table.table_number}
+                  </button>
+                  {/* Toggle butonu - küçük */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleTable(table.id);
+                    }}
+                    className="absolute top-1 right-1 p-1 bg-white rounded-full shadow-sm hover:bg-gray-100"
+                    title="Masa durumunu değiştir"
+                  >
+                    {table.is_occupied ? (
+                      <ToggleRight className="h-3 w-3 text-red-600" />
+                    ) : (
+                      <ToggleLeft className="h-3 w-3 text-green-600" />
+                    )}
+                  </button>
+                </div>
               ))}
             </div>
           </div>
