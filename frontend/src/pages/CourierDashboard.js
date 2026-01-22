@@ -185,6 +185,18 @@ export default function CourierDashboard() {
             <CheckCircle className="h-5 w-5 inline mr-2" />
             Siparişlerim ({myOrders.length})
           </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === 'history'
+                ? 'bg-orange-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100'
+            }`}
+            data-testid="tab-history"
+          >
+            <Clock className="h-5 w-5 inline mr-2" />
+            Sipariş Geçmişim ({history.length})
+          </button>
         </div>
 
         {/* Paketler */}
