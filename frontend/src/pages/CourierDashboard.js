@@ -372,6 +372,77 @@ export default function CourierDashboard() {
           </div>
         )}
 
+        {/* Sipariş Geçmişim */}
+        {activeTab === 'history' && (
+          <div className="space-y-4">
+            {history.length === 0 ? (
+              <div className="bg-white rounded-lg shadow-md p-12 text-center">
+                <Clock className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                <p className="text-gray-500 text-lg">Bugün sipariş geçmişin yok</p>
+              </div>
+            ) : (
+              history.map((order) => (
+                <div
+                  key={order.id}
+                  className="bg-white rounded-lg shadow-md p-6"
+                  data-testid={`history-${order.order_number}`}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="font-bold text-xl text-green-600">{order.order_number}</h3>
+                      <p className="text-sm text-gray-600">
+                        {new Date(order.created_at).toLocaleString('tr-TR')}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-green-600">
+                        {order.total_amount.toFixed(2)} ₺
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        order.status === 'delivered' ? 'bg-green-100 text-green-800' : 
+                        order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {order.status === 'delivered' ? 'Teslim Edildi' : 
+                         order.status === 'cancelled' ? 'İptal Edildi' : 
+                         'Bekliyor'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Müşteri Bilgileri */}
+                  <div className="bg-green-50 rounded-lg p-4 mb-4 space-y-2">
+                    <div className="flex items-center text-gray-700">
+                      <User className="h-4 w-4 mr-2" />
+                      <span className="font-medium">{order.customer_name || 'Belirtilmemiş'}</span>
+                    </div>
+                    <div className="flex items-center text-gray-700">
+                      <Phone className="h-4 w-4 mr-2" />
+                      <span>{order.customer_phone || 'Belirtilmemiş'}</span>
+                    </div>
+                    <div className="flex items-start text-gray-700">
+                      <MapPin className="h-4 w-4 mr-2 mt-1" />
+                      <span>{order.customer_address || 'Adres belirtilmemiş'}</span>
+                    </div>
+                  </div>
+
+                  {/* Ürünler */}
+                  <div>
+                    <h4 className="font-semibold mb-2">Ürünler:</h4>
+                    <div className="space-y-1">
+                      {order.items.map((item, index) => (
+                        <div key={index} className="flex justify-between text-sm">
+                          <span>{item.quantity}x {item.product_name}</span>
+                          <span className="font-medium">{(item.quantity * item.price).toFixed(2)} ₺</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-xs text-gray-500">Powered by <span className="font-semibold text-orange-600">Anadolu BT</span></p>
