@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Package, CheckCircle, XCircle, MapPin, Phone, User, LogOut, TrendingUp, DollarSign } from 'lucide-react';
-import { getPackages, getMyOrders, takeOrder, deliverOrder, cancelOrderCourier, getMyStats } from '../services/api';
+import { Package, CheckCircle, XCircle, MapPin, Phone, User, LogOut, TrendingUp, DollarSign, Clock } from 'lucide-react';
+import { getPackages, getMyOrders, takeOrder, deliverOrder, cancelOrderCourier, getMyStats, getMyHistory } from '../services/api';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -10,6 +10,7 @@ export default function CourierDashboard() {
   const navigate = useNavigate();
   const [packages, setPackages] = useState([]);
   const [myOrders, setMyOrders] = useState([]);
+  const [history, setHistory] = useState([]);
   const [stats, setStats] = useState(null);
   const [activeTab, setActiveTab] = useState('packages');
   const [loading, setLoading] = useState(false);
@@ -17,10 +18,12 @@ export default function CourierDashboard() {
   useEffect(() => {
     loadData();
     loadStats();
+    loadHistory();
     // Her 30 saniyede bir yenile
     const interval = setInterval(() => {
       loadData();
       loadStats();
+      loadHistory();
     }, 30000);
     return () => clearInterval(interval);
   }, [activeTab]);
