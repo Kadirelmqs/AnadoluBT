@@ -737,7 +737,7 @@ async def update_table_status(table_id: str, is_occupied: bool):
     return {"message": "Masa durumu güncellendi"}
 
 @api_router.put("/tables/{table_id}/toggle")
-async def toggle_table_status(table_id: str):
+async def toggle_table_status(table_id: str,user: dict = Depends(get_current_user)):
     """Masa durumunu değiştir (dolu <-> boş)"""
     table = await db.tables.find_one({"id": table_id})
     if not table:
@@ -775,7 +775,7 @@ async def get_couriers(available_only: bool = False, approved_only: bool = True)
 # ========== ORDER ENDPOINTS ==========
 
 @api_router.post("/orders", response_model=Order)
-async def create_order(input: OrderCreate):
+async def create_order(input: OrderCreate, user: dict = Depends(get_current_user)):
     total = sum(item.quantity * item.price for item in input.items)
     order_number = await get_next_order_number()
     
@@ -810,7 +810,7 @@ async def create_order(input: OrderCreate):
     return order
 
 @api_router.get("/orders", response_model=List[Order])
-async def get_orders(status: Optional[str] = None):
+async def get_orders(status: Optional[str] = None, user: dict = Depends(get_current_user)):
     query = {"status": status} if status else {}
     orders = await db.orders.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
     for order in orders:
@@ -821,7 +821,7 @@ async def get_orders(status: Optional[str] = None):
     return orders
 
 @api_router.put("/orders/{order_id}/status")
-async def update_order_status(order_id: str, status: str):
+async def update_order_status(order_id: str, status: str, user: dict = Depends(get_current_user)):
     valid_statuses = ["pending", "preparing", "ready", "delivered", "cancelled"]
     if status not in valid_statuses:
         raise HTTPException(status_code=400, detail="Geçersiz durum")
@@ -875,7 +875,7 @@ async def generate_receipt(order_id: str):
 # ========== STATISTICS ENDPOINTS ==========
 
 @api_router.get("/stats/dashboard")
-async def get_dashboard_stats():
+async def get_dashboard_stats(user: dict = Depends(require_admin)):
     total_orders = await db.orders.count_documents({})
     pending_orders = await db.orders.count_documents({"status": "pending"})
     preparing_orders = await db.orders.count_documents({"status": "preparing"})

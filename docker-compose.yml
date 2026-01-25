@@ -1,0 +1,31 @@
+# AnadoluBT/docker-compose.yml
+
+version: '3.8'
+
+services:
+  # Backend Servisi
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: restoran_backend
+    ports:
+      - "80:8000"
+    environment:
+      - MONGO_URL=mongodb://db:27017
+      - DB_NAME=restoran_db
+      - SECRET_KEY=gizli_anahtarini_buraya_yaz
+    depends_on:
+      - db
+    restart: always
+
+  # Veritabanı Servisi
+  db:
+    image: mongo:latest
+    container_name: restoran_db
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
